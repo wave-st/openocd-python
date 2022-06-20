@@ -265,7 +265,7 @@ class OpenOCDClient():
         return regs
 
 
-    def reset(self, str_cmd):
+    def reset_cmd(self, str_cmd):
         self.send("reset %s" % (str_cmd))
 
 
@@ -285,8 +285,13 @@ class OpenOCDClient():
                 retries -= 1
     
 
+    def reset(self, blocking=False, retries=5, sleepBetweenRetries=1) :
+        if(blocking):
+            self.waitForState(TargetState.Reset, retries, sleepBetweenRetries)
+
+
     def resetHalt(self, blocking=False, retries=5, sleepBetweenRetries=1):
-        self.reset("halt")
+        self.reset_cmd("halt")
         if(blocking):
             self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
 
