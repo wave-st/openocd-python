@@ -134,7 +134,7 @@ class OpenOCDClient():
         return data
 
 
-    def readSingle(self, size, address, physical=False) :
+    def readMemory(self, size, address, physical=False) :
         phys = ""
         if physical :
             phys = "phys"
@@ -151,7 +151,7 @@ class OpenOCDClient():
             return None
 
 
-    def writeSingle(self, size, address, value, check=True, physical=False) :
+    def writeMemory(self, size, address, value, check=True, physical=False) :
         phys = ""
         if physical :
             phys = "phys"
@@ -171,7 +171,7 @@ class OpenOCDClient():
             return None
 
         if (check) :
-            readMem = self.readSingle(size, address, physical)
+            readMem = self.readMemory(size, address, physical)
             if(readMem[address] != value):
                 logger.error("write fail, are you sure this memory is writable ?")
                 return False
@@ -180,31 +180,31 @@ class OpenOCDClient():
 
 
     def writeDouble(self, address, check=True, physical=False):
-        return self.writeSingle(MemType.UINT64, address, check, physical)
+        return self.writeMemory(MemType.UINT64, address, check, physical)
 
     def writeWord(self, address, check=True, physical=False):
-        return self.writeSingle(MemType.UINT32, address, check, physical)
+        return self.writeMemory(MemType.UINT32, address, check, physical)
 
     def writeHalfWord(self, address, check=True, physical=False):
-        return self.writeSingle(MemType.UINT16, address, check, physical)
+        return self.writeMemory(MemType.UINT16, address, check, physical)
 
     def writeByte(self, address, check=True, physical=False):
-        return self.writeSingle(MemType.UINT8, address, check, physical)
+        return self.writeMemory(MemType.UINT8, address, check, physical)
 
     def readDouble(self, address, physical=False):
-        return self.readSingle(MemType.UINT64, address, physical)
+        return self.readMemory(MemType.UINT64, address, physical)
 
     def readWord(self, address, physical=False):
-        return self.readSingle(MemType.UINT32, address, physical)
+        return self.readMemory(MemType.UINT32, address, physical)
 
     def readHalfWord(self, address, physical=False):
-        return self.readSingle(MemType.UINT16, address, physical)
+        return self.readMemory(MemType.UINT16, address, physical)
 
     def readByte(self, address, physical=False):
-        return self.readSingle(MemType.UINT8, address, physical)
+        return self.readMemory(MemType.UINT8, address, physical)
 
 
-    def writeMemory(self, size, memory_dict, physical=False):
+    def writeMemoryLen(self, size, memory_dict, physical=False):
         phys = ""
         if physical :
             phys = "phys"
@@ -223,7 +223,7 @@ class OpenOCDClient():
         return True
 
 
-    def readMemory(self, wordtype, address, n, physical=False): # todo: handle physical address
+    def readMemoryLen(self, wordtype, address, n, physical=False): # todo: handle physical address
         phys = ""
         if physical :
             phys = "phys"
@@ -286,6 +286,7 @@ class OpenOCDClient():
     
 
     def reset(self, blocking=False, retries=5, sleepBetweenRetries=1) :
+        self.reset_cmd("")
         if(blocking):
             self.waitForState(TargetState.Reset, retries, sleepBetweenRetries)
 
