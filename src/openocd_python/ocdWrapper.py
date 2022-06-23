@@ -4,8 +4,10 @@ from enum import Enum
 #from posixpath import split
 import socket
 import itertools
+import threading
 import time
 import re
+from threading import Lock
 from loguru import logger
 
 
@@ -58,6 +60,7 @@ class OpenOCDClient():
         self.chipName = "unknown"
         self.cpuTAPid = "unknown"
         self.workAreaSize = "unknown"
+        self.mutex = threading.Lock()
 
     def connect(self):
         self.tcl_socket.connect((self.tcl_ip, self.tcl_port))
@@ -106,6 +109,8 @@ class OpenOCDClient():
 
     def send(self, cmd):
         """Send a command string to TCL RPC. Return the result that was read."""
+        self.mutex.acquire()
+        
         if self.verbose:
             print(cmd)
         data = (cmd + OpenOCDClient.COMMAND_TOKEN).encode("utf-8")
@@ -131,6 +136,7 @@ class OpenOCDClient():
         data = data.decode("utf-8").strip()
         data = data[:-1]  # strip trailing \x1a
 
+        self.mutex.release()
         return data
 
 
