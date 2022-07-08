@@ -3,13 +3,12 @@
 from enum import Enum
 #from posixpath import split
 import socket
-import itertools
 import threading
 import time
 import re
 from threading import Lock
 from loguru import logger
-
+import os.path
 
 class MemType(Enum):
     UINT64 = 64
@@ -275,32 +274,32 @@ class OpenOCDClient():
         self.send("reset %s" % (str_cmd))
 
 
-    def halt(self, blocking=False, retries=5, sleepBetweenRetries=1):
+    def halt(self, retries=-1, sleepBetweenRetries=1):
         self.send("halt")
-        if(blocking):
-            self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
+        return self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
 
 
-    def waitForState(self, targetState, retries=-1, sleepBetweenRetries=1):
-        blocking = False
-        if retries < 0 : 
-            blocking = True
+    def waitForState(self, targetState, retries, sleepBetweenRetries=1):
+        if(retries < 0):
+            return None
+        
+        while retries > 0 :
+            if(self.getState() == targetState):
+                return True
+            time.sleep(sleepBetweenRetries)
+            retries -= 1
 
-        while self.getState() != targetState and (blocking or retries > 0) :
-                time.sleep(sleepBetweenRetries)
-                retries -= 1
+        return False
     
 
-    def reset(self, blocking=False, retries=5, sleepBetweenRetries=1) :
+    def reset(self, retries=-1, sleepBetweenRetries=1) :
         self.reset_cmd("")
-        if(blocking):
-            self.waitForState(TargetState.Reset, retries, sleepBetweenRetries)
+        return self.waitForState(TargetState.Reset, retries, sleepBetweenRetries)
 
 
-    def resetHalt(self, blocking=False, retries=5, sleepBetweenRetries=1):
+    def resetHalt(self, retries=-1, sleepBetweenRetries=1):
         self.reset_cmd("halt")
-        if(blocking):
-            self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
+        return self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
 
 
     def getState(self):
@@ -312,16 +311,55 @@ class OpenOCDClient():
         return self.state
 
 
-    def resume(self, blocking=False, retries=5, sleepBetweenRetries=1):
+    def resume(self, retries=-1, sleepBetweenRetries=1):
         self.send("resume")
-        if(blocking):
-            self.waitForState(TargetState.Running, retries, sleepBetweenRetries)
+        return self.waitForState(TargetState.Running, retries, sleepBetweenRetries)
 
 
-    def halt(self, blocking=False, retries=5, sleepBetweenRetries=1):
+    def halt(self, retries=-1, sleepBetweenRetries=1):
         self.send("halt")
-        if(blocking):
-            self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
+        return self.waitForState(TargetState.Halted, retries, sleepBetweenRetries)
+
+    def getOpenOCDlaunchPath(self):
+        return self.captureCommand("echo $::env(PWD)")
+
+    def flashWrite(self, binPath, startAddr, resolveAbsolutePath=True):
+        if(binPath == ""):
+            logger.error("binPath empty")
+            return -1
+
+        if(resolveAbsolutePath and binPath[0] != "/"):
+            logger.warning("binPath is relative, trying to correct")
+            resolvedPath = self.getOpenOCDlaunchPath() + "/" + binPath
+            if(os.path.exists(resolvedPath)):
+                logger.warning("resolved to " + resolvedPath)
+                binPath = resolvedPath
+            else :
+                logger.warning("impossible to resolve")
+        
+        logger.info("addr: 0x%0.8x binfile: %s" % (startAddr, binPath))
+        logger.info("Checking target state...")
+        
+        if(self.getState() != TargetState.Halted):
+            logger.info("halting target...")
+
+            if(not self.resetHalt(retries=5)):
+                logger.error("unable to halt target")
+                return False
+
+            logger.info("target halted")
+        logger.info("target ready")
+
+        str_res = self.captureCommand("flash write_image erase %s 0x%0.8x" % (binPath, startAddr))
+
+        try :
+            bytes_written = int(re.findall(r"wrote (\d+) bytes", str_res)[0])
+            logger.info("flashed " + str(bytes_written) + " bytes")
+            return bytes_written
+        except :
+            logger.error("flash fail")
+        
+        return -1
 
 
     def command(self, cmd, capture=True, verbose=False): # send any command to openocd

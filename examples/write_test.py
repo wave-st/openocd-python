@@ -1,5 +1,4 @@
 from time import sleep
-import unittest
 from openocd_python import *
 from random import randrange
 
